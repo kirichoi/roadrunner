@@ -366,11 +366,50 @@ public:
          */
         SIMULATEOPTIONS_COPY_RESULT,
 
+        /**
+         * Flag for steady state approximation routine running by default for steadyState.
+         */
+        STEADYSTATE_APPROX_DEFAULT,
+
+        /**
+         * Tolerance for steady state approximation routine.
+         */
+        STEADYSTATE_APPROX_TOL,
+
+        /**
+         * Maximum number of steps that can be taken for steady state approximation routine.
+         */
+        STEADYSTATE_APPROX_MAX_STEPS,
+
+        /**
+         * End time for steady state approximation routine.
+         */
+        STEADYSTATE_APPROX_TIME,
+
+        /**
+         * Specifies the relative tolerance.
+         */
         STEADYSTATE_RELATIVE,
 
+        /**
+         * Maximum number of steps for steady state solvers.
+         */
         STEADYSTATE_MAXIMUM_NUM_STEPS,
 
+        /**
+         * Minimum damping factor for steady state solvers.
+         */
         STEADYSTATE_MINIMUM_DAMPING,
+
+        /**
+         * Switches on Broyden method.
+         */
+        STEADYSTATE_BROYDEN,
+        
+        /**
+         * Specifies linearity of the problem.
+         */
+        STEADYSTATE_LINEARITY,
 
         /**
          * Determines the mode that the RoadRunner Jacobian calculations will be

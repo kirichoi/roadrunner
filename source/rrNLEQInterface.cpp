@@ -3,7 +3,7 @@
 #include "rrExecutableModel.h"
 #include "rrStringUtils.h"
 #include "rrUtils.h"
-#include "nleq/nleq1.h"
+#include "nleq/nleq2.h"
 #include "rrLogger.h"
 #include "rrUtils.h"
 #include "rrException.h"
@@ -55,9 +55,11 @@ NLEQInterface::NLEQInterface(ExecutableModel *_model) :
     iopt(0),
     model(0),
     nOpts(50),
-    maxIterations(Config::getInt(Config::STEADYSTATE_MAXIMUM_NUM_STEPS)),
     relativeTolerance(Config::getDouble(Config::STEADYSTATE_RELATIVE)),
-    minDamping(Config::getDouble(Config::STEADYSTATE_MINIMUM_DAMPING))
+    maxIterations(Config::getInt(Config::STEADYSTATE_MAXIMUM_NUM_STEPS)),
+    minDamping(Config::getDouble(Config::STEADYSTATE_MINIMUM_DAMPING)),
+    broyden(Config::getDouble(Config::STEADYSTATE_BROYDEN)),
+    linearity(Config::getDouble(Config::STEADYSTATE_LINEARITY))
 {
     model = _model;
 
@@ -99,7 +101,10 @@ void NLEQInterface::setup()
     }
 
     // Set for Highly nonlinear problem
-    iopt[31 - 1] = 4;
+    iopt[31 - 1] = linearity;
+
+    // Set for Broyden method
+    iopt[32 - 1] = broyden;
 
     // Initialise all array elements to 0.0
     IWK = new long[LIWK];
@@ -115,7 +120,6 @@ void NLEQInterface::setup()
     {
         RWK[i] = 0.0;
     }
-
     RWK[22 - 1] = minDamping; // Minimal allowed damping factor
 }
 
@@ -144,7 +148,6 @@ double NLEQInterface::solve()
     //    double* Jacobian = new double[1];
 
     ierr = 0;
-    IWK[31 - 1] = maxIterations; // Max iterations
 
     // Set up default scaling factors
     for (int i = 0; i < n; i++)
@@ -157,7 +160,9 @@ double NLEQInterface::solve()
         iopt[i] = 0;
     }
 
-    iopt[31 - 1] = 3; // Set for Highly nonlinear problem
+    iopt[31 - 1] = linearity; // Set for Highly nonlinear problem
+
+    iopt[32 - 1] = broyden; // Set for Broyden method
 
     // Initialise all array elements to 0.0
     for (int i = 0; i < LIWK; i++)
@@ -166,12 +171,13 @@ double NLEQInterface::solve()
     }
 
     IWK[31 - 1] = maxIterations; // Max iterations
+
     for (int i = 0; i < LWRK; i++)
     {
         RWK[i] = 0.0;
     }
 
-    RWK[22 - 1] = 1E-20; // Minimal allowed damping factor
+    RWK[22 - 1] = minDamping; // Minimal allowed damping factor
 
     // For some reason NLEQ modifies the tolerance value, use a local copy instead
     double tmpTol = relativeTolerance;
@@ -191,7 +197,7 @@ double NLEQInterface::solve()
         vector<double> stateVector(n);
         model->getStateVector(&stateVector[0]);
 
-        NLEQ1(  &n,
+        NLEQ2(  &n,
                 &ModelFunction,
                 NULL,
                 &stateVector[0],
@@ -212,19 +218,6 @@ double NLEQInterface::solve()
         // clear the global model and re-throw the exception.
         callbackModel = NULL;
         throw;
-    }
-
-    if (ierr == 2) // retry
-    {
-        for (int i = 0; i < nOpts; i++)
-        {
-            iopt[i] = 0;
-        }
-
-        iopt[31 - 1] = 3; // Set for Highly nonlinear problem
-        iopt[0] = 1; // Try again but tell NLEQ not to reinitialize
-        tmpTol = relativeTolerance;
-
     }
 
     if(ierr > 0 )
@@ -352,7 +345,7 @@ string ErrorForStatus(int error)
 {
     switch (error)
     {
-    case 1:     return ("Jacobian matrix singular in NLEQ");
+    case 1:     return ("Jacobian matrix singular in NLEQ. Failed to converge to steady state. Check if Jacobian matrix is non-invertible or steady state solution does not exist.");
     case 2:     return ("Maximum iterations exceeded");
     case 3:     return ("Damping factor has became to small to continue");
     case 4:     return ("Warning: Superlinear or quadratic convergence slowed down near the solution");
@@ -375,14 +368,23 @@ string ErrorForStatus(int error)
 // steady state solver options
 static const char* keys[] =
 {
+        "relativeTolerance"
         "maxIterations",
-        "relativeTolerance",
+        "minDamping"
+        "broyden"
+        "linearity"
 
+        "relativeTolerance.description"
         "maxIterations.description",
-        "relativeTolerance.description",
+        "minDamping.description"
+        "broyden.description"
+        "linearity.description"
 
-        "maxIterations.hint",
         "relativeTolerance.hint"
+        "maxIterations.hint",
+        "minDamping.hint"
+        "broyden.hint"
+        "linearity.hint"
 };
 
 void NLEQInterface::setItem(const std::string& key, const rr::Variant& value)
@@ -417,17 +419,23 @@ const Dictionary* NLEQInterface::getSteadyStateOptions()
     dict.setItem("steadyState.hint", "NLEQ hint");
     dict.setItem("steadyState.description", "NLEQ description");
 
-    dict.setItem("maxIterations", Config::getInt(Config::STEADYSTATE_MAXIMUM_NUM_STEPS));
     dict.setItem("relativeTolerance", Config::getDouble(Config::STEADYSTATE_RELATIVE));
+    dict.setItem("maxIterations", Config::getInt(Config::STEADYSTATE_MAXIMUM_NUM_STEPS));
     dict.setItem("minDamping", Config::getDouble(Config::STEADYSTATE_MINIMUM_DAMPING));
+    dict.setItem("broyden", Config::getDouble(Config::STEADYSTATE_BROYDEN));
+    dict.setItem("linearity", Config::getDouble(Config::STEADYSTATE_LINEARITY));
 
-    dict.setItem("maxIterations.description", "maxIterations.description");
     dict.setItem("relativeTolerance.description", "relativeTolerance.description");
+    dict.setItem("maxIterations.description", "maxIterations.description");
     dict.setItem("minDamping.description", "minDamping.description");
+    dict.setItem("broyden.description", "broyden.description");
+    dict.setItem("linearity.description", "linearity.description");
 
-    dict.setItem("maxIterations.hint", "maxIterations.hint");
     dict.setItem("relativeTolerance.hint", "relativeTolerance.hint");
+    dict.setItem("maxIterations.hint", "maxIterations.hint");
     dict.setItem("minDamping.hint", "minDamping.hint");
+    dict.setItem("broyden.hint", "broyden.hint");
+    dict.setItem("linearity.hint", "linearity.hint");
 
     return &dict;
 }

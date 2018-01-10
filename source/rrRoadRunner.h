@@ -84,7 +84,7 @@ public:
     int getInstanceCount();
 
     /**
-     * given an sbml document, this method moves all the local parameters
+     * Given an sbml document or path to an sbml document, this method moves all the local parameters
      * to global parameters.
      */
     static std::string getParamPromotedSBML(const std::string& sArg);
@@ -657,6 +657,17 @@ public:
     double steadyState(const Dictionary* dict = 0);
 
     /**
+    * Appoximate the steady state of the model by checking the changes in time course
+    * simulation. Returns the sum of squares of the solution
+    * 
+    * Appoximation will use CVODE with variable step sizes.
+    * 
+    * @param dict a pointer to a dictionary which has the steady state options.
+    * May be NULL, in this case the existing options are used.
+    */
+    double steadyStateApproximate(const Dictionary* dict = 0);
+
+    /**
      * Like @ref steadyState but returns a named array of the steady state values
      */
     ls::DoubleMatrix steadyStateNamedArray(const Dictionary* dict = 0);
@@ -848,6 +859,12 @@ public:
      * @deprecated
      */
     RR_DEPRECATED(std::vector<double> getFloatingSpeciesConcentrationsV());
+
+    /**
+    * @internal
+    * @deprecated
+    */
+    RR_DEPRECATED(std::vector<double> getFloatingSpeciesAmountsV());
 
     /**
      * @internal

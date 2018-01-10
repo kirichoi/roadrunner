@@ -752,10 +752,10 @@ Get a list of available integrator names.
 %feature("docstring") rr::RoadRunner::getParamPromotedSBML "
 RoadRunner.getParamPromotedSBML(*args)
 
-Takes an SBML document (in textual form) and changes all of the local parameters
+Takes an SBML document or path to an SBML document and changes all of the local parameters
 to be global parameters.
 
-:param str SBML: the contents of an SBML document
+:param str SBML: the contents or path to an SBML document
 :rtype: str
 ";
 
@@ -937,6 +937,25 @@ steady state has been found. If necessary the method can be called a
 second time to improve the solution.
 
 :returns: the sum of squares of the steady state solution.
+
+:rtype: double
+";
+
+
+
+%feature("docstring") rr::RoadRunner::steadyStateApproximate "
+RoadRunner.steadyStateApproximate()
+
+Attempt to approximate the steady state for the model by running integration
+for a specified amount of time. This function is ideal for the case where
+steady state solution does exist but the solver cannot find the 
+solution due to singular Jacobian, etc. The method returns
+a value that indicates how close the solution is to the steady state.
+The smaller the value the better. Values less than 1E-6 usually indicate a
+steady state has been found. If necessary the method can be called a
+second time to improve the solution.
+
+:returns: the sum of squares of the approximated steady state solution.
 
 :rtype: double
 ";
